@@ -1,12 +1,12 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+# routes/chat_mock.py
+from fastapi import APIRouter
+from models.schemas import UserMessage, Userinfo
 from typing import List
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
-app = FastAPI()
+router = APIRouter()
 
-# 더미 도서 데이터
 books_db = [
     {
         "title": "더러워: 냄새나는 세계사",
@@ -37,14 +37,6 @@ books_db = [
     },
 ]
 
-class Userinfo(BaseModel):
-    name: str
-    idNum: int
-
-class UserMessage(BaseModel):
-    userMessage: str
-    idNum: int
-
 # 간단한 키워드 추출 mock 함수
 def extract_keywords_mock(text: str) -> List[str]:
     if "스트레스" in text or "우울" in text:
@@ -70,35 +62,7 @@ def get_embedding_from_keywords(keywords: List[str]) -> List[float]:
     vectors = [keyword_map.get(k, [0.0, 0.0, 0.0, 0.0]) for k in keywords]
     return list(np.mean(vectors, axis=0))
 
-
-@app.post("/chat")
+@router.post("/chat")
 def chat(message: UserMessage):
     keywords = extract_keywords_mock(message.userMessage)
     return {"responseText": f"당신의 관심 키워드는 {', '.join(keywords)} 입니다."}
-
-
-@app.post("/book-recommend")
-def bookRecommend(userinfo: Userinfo):
-    # 예시: 임의의 userMessage에서 키워드 추출
-    simulated_user_message = "중학생인데 요즘 스트레스 많이 받아요"
-    keywords = extract_keywords_mock(simulated_user_message)
-    user_vector = get_embedding_from_keywords(keywords)
-
-    results = []
-    for book in books_db:
-        sim = cosine_similarity([user_vector], [book["embedding"]])[0][0]
-        results.append((sim, book))
-
-    # 상위 3권 추천
-    top_books = sorted(results, key=lambda x: x[0], reverse=True)[:3]
-    
-    recommendations = []
-    for sim, book in top_books:
-        recommendations.append({
-            "bookTitle": book["title"],
-            "bookReason": f"{', '.join(book['keywords'])} 관련 주제",
-            "imageUrl": book["imageUrl"],
-            "bookUrl": book["bookUrl"]
-        })
-
-    return {"recommendations": recommendations}
