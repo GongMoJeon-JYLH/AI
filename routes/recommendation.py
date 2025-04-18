@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from models.schemas import Query
-from services.book_loader import load_books, load_vectors, model
+from models.deepseek_model import full_conversation_loop
+from services.book_loader import load_books, load_vectors
 from services.book_updater import update_books_from_api
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
