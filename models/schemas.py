@@ -1,15 +1,25 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
-class Query(BaseModel):
-    question: str
-    region: Optional[str] = None  # 지역 정보 (선택)
-    
 class Userinfo(BaseModel):
     name: str
-    idNum: int
+    userId: str
 
 class UserMessage(BaseModel):
     userMessage: str
-    idNum: int
-    
+    userId: str
+
+class ChatResponse(BaseModel):
+    responseText: str
+
+class BookRecommendation(BaseModel):
+    bookTitle: str
+    bookReason: str
+    imageUrl: str
+    bookUrl: str
+
+class BookRecommendationList(BaseModel):
+    recommendations: List[BookRecommendation]
+
+class UserName(BaseModel):
+    name: str
