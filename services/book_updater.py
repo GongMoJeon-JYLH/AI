@@ -1,16 +1,11 @@
 import os
 import requests
 import json
-import numpy as np
-from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
 load_dotenv()
 
 BOOKS_JSON_PATH = "books_keywords.json"
-BOOKS_VECTOR_PATH = "books_keywords_vectors.npy"
-
-model = SentenceTransformer("jhgan/ko-sbert-nli")
 
 def fetch_popular_books(start_date="2023-01-01", end_date="2025-04-13", age="10", page_size=100):
     auth_key = os.getenv("DATA4LIBRARY_API_KEY")
@@ -44,7 +39,7 @@ def fetch_keywords_for_book(isbn13: str) -> list:
         for item in items if "item" in item
     ]
 
-def fetch_summary_for_book(isbn13: str) -> list:
+def fetch_summary_for_book(isbn13: str) -> str:
     auth_key = os.getenv("DATA4LIBRARY_API_KEY")
     url = f"http://data4library.kr/api/srchDtlList"
     params = {
@@ -59,6 +54,7 @@ def fetch_summary_for_book(isbn13: str) -> list:
         return data["response"]["detail"][0]["book"]["description"]
     except (KeyError, IndexError):
         return ""
+
 def update_book_data():
     books_raw = fetch_popular_books()
     books = []
@@ -67,7 +63,7 @@ def update_book_data():
         isbn = doc.get("isbn13")
         if not isbn:
             continue
-        
+
         summary = fetch_summary_for_book(isbn)
         keywords = fetch_keywords_for_book(isbn)
         books.append({
@@ -86,25 +82,36 @@ def update_book_data():
     with open(BOOKS_JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(books, f, ensure_ascii=False, indent=2)
 
-    texts = [f"{b['title']} {b['summary']} {' '.join([kw['word'] for kw in b['keywords']])}" for b in books]
-    vectors = model.encode(texts)
-    np.save(BOOKS_VECTOR_PATH, vectors)
+    return books
 
-    return books, vectors
-
-def load_or_update_books():
-    """books_keywords.json 또는 벡터 파일이 없으면 자동 생성"""
-    if not os.path.exists(BOOKS_JSON_PATH) or not os.path.exists(BOOKS_VECTOR_PATH):
+def load_or_update_books_and_insert(rag) -> list:
+    """
+    책 데이터를 로드하거나 없으면 업데이트 + rag.insert 실행까지
+    """
+    if not os.path.exists(BOOKS_JSON_PATH):
         print("📚 데이터 파일이 없어 업데이트를 진행합니다...")
-        return update_book_data()
+        books = update_book_data()
     else:
         print("✅ 기존 도서 데이터 로드 중...")
         with open(BOOKS_JSON_PATH, "r", encoding="utf-8") as f:
             books = json.load(f)
-        vectors = np.load(BOOKS_VECTOR_PATH)
-        return books, vectors
 
-# 🧪 테스트 실행 시
+    from services.book_formatter import format_book_json_with_weight
+    docs = format_book_json_with_weight(BOOKS_JSON_PATH)
+
+    for doc in docs:
+        rag.insert(doc)
+
+    return books
+
+# 🔪 테스트 실행 시
 if __name__ == "__main__":
-    books, vectors = load_or_update_books()
-    print(f"총 {len(books)}권의 책이 로드됨.")
+    from models.deepseek_lightrag import get_rag
+    import asyncio
+
+    async def test():
+        rag = await get_rag()
+        books = load_or_update_books_and_insert(rag)
+        print(f"총 {len(books)}권의 책이 로드됨.")
+
+    asyncio.run(test())
