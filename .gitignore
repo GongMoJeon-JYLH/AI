@@ -172,3 +172,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+#rag_workdir
+books/
+books2/
+books3/
+books4/
+rag_workdir/
+rag_storage/
