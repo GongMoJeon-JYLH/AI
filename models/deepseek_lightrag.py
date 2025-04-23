@@ -10,7 +10,7 @@ import numpy as np
 
 load_dotenv()
 
-WORKING_DIR = "./deepseek_books"
+WORKING_DIR = "./rag_working_dir3"
 
 if not os.path.exists(WORKING_DIR):
     os.mkdir(WORKING_DIR)
@@ -18,7 +18,7 @@ if not os.path.exists(WORKING_DIR):
 
 async def llm_model_func(prompt, system_prompt=None, history_messages=[], **kwargs) -> str:
     from lightrag.llm.openai import openai_complete_if_cache
-
+    
     return await openai_complete_if_cache(
         model="deepseek-chat",
         prompt=prompt,
@@ -57,6 +57,13 @@ async def initialize_rag():
 
     return rag
 
+_rag_instance = None
+
+async def get_rag_instance():
+    global _rag_instance
+    if _rag_instance is None:
+        _rag_instance = await initialize_rag()
+    return _rag_instance
 
 def main():
     # Initialize RAG instance
@@ -71,7 +78,5 @@ def main():
             "흔한 남매 책 중에 추천해줘", param=QueryParam(mode="hybrid")
         )
     )
-
-
 if __name__ == "__main__":
     main()
